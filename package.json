@@ -1,0 +1,38 @@
+{
+  "name": "rivi",
+  "version": "1.0.0",
+  "description": "A faster React alternative based on pure DOM",
+  "main": "build/index.js",
+  "keywords": [
+    "react",
+    "alternative",
+    "framework",
+    "typescript",
+    "javascript"
+  ],
+  "homepage": "https://github.com/sentialx/rivi#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sentialx/rivi.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sentialx/rivi/issues"
+  },
+  "scripts": {
+    "dev": "tsc --watch .",
+    "build": "tsc .",
+    "lint": "tslint \"src/**/*.ts*\"",
+    "lint-fix": "prettier --write \"src/**/*.ts*\" && tslint \"src/**/*.ts*\" --fix"
+  },
+  "pre-commit": [
+    "lint-fix"
+  ],
+  "devDependencies": {
+    "@types/node": "10.12.19",
+    "prettier": "1.16.2",
+    "tslint": "5.12.1",
+    "tslint-config-airbnb": "5.11.1",
+    "tslint-config-prettier": "1.17.0",
+    "typescript": "3.2.4"
+  }
+}
