@@ -23,6 +23,29 @@ const jsToCss = (style: any) => {
   return str;
 };
 
+export function reactive(target: any, key: string) {
+  let val = target[key];
+
+  const e = {
+    get() {
+      console.log(e.get.caller);
+
+      return val;
+    },
+    set(value: any) {
+      val = value;
+
+      if (entry) {
+        entry.forceUpdate();
+      }
+    },
+    configurable: true,
+    enumerable: true,
+  };
+
+  Object.defineProperty(target, key, e);
+}
+
 export const updateElement = (
   name: any,
   props: any = null,
