@@ -1,17 +1,26 @@
-class Context {
-  public Provider: Component;
-}
+let entry: Component;
 
-export const createContext = () => {
-  const ctx = new Context();
-  ctx.Provider = new Component();
-  return ctx;
-};
+const jsToCss = (style: any) => {
+  let str = '';
+  for (const key in style) {
+    let newKey = '';
+    let value: string = style[key].toString();
 
-export const forwardRef = () => {};
+    for (let i = 0; i < key.length; i++) {
+      if (key[i] === key[i].toUpperCase()) {
+        newKey += `-${key[i].toLowerCase()}`;
+      } else {
+        newKey += key[i];
+      }
+    }
 
-export const findDOMNode = (a: any) => {
-  return a.root;
+    if (typeof style[key] === 'number') {
+      value += 'px';
+    }
+
+    str += `${newKey}:${value};`;
+  }
+  return str;
 };
 
 export const updateElement = (
@@ -21,12 +30,13 @@ export const updateElement = (
 ) => {
   if (typeof name === 'function') {
     const component = new name();
-    component.props = props;
-    if (component.props) {
-      component.props.children = children;
-    }
+    component.props = { ...props };
 
-    return component.render();
+    component.props.children = children;
+
+    const root = component.render(component.props, component.state);
+
+    return root;
   }
 
   const element: any = {
@@ -38,7 +48,11 @@ export const updateElement = (
     for (const key in props) {
       if (key === 'className') {
         element.attributes['class'] = props[key];
-      } else if (!key.startsWith('on') && key !== 'ref') {
+      } else if (key === 'style' && typeof props[key] === 'object') {
+        element.attributes[key] = jsToCss(props[key]);
+      } else if (key.startsWith('on')) {
+        element[key.toLowerCase()] = props[key];
+      } else if (key !== 'ref') {
         element.attributes[key] = props[key];
       }
     }
@@ -49,7 +63,9 @@ export const updateElement = (
       for (const c of child) {
         element.children.push(c);
       }
-    } else if (typeof child === 'object') {
+    } else if (typeof child === 'number') {
+      element.children.push(child.toString());
+    } else {
       element.children.push(child);
     }
   }
@@ -57,31 +73,29 @@ export const updateElement = (
   return element;
 };
 
-export let createElement = (
-  name: any,
-  props: any = null,
-  ...children: any[]
-) => {
+const _createElement = (name: any, props: any = null, ...children: any[]) => {
   if (typeof name === 'function') {
     const component = new name();
-    component.props = props;
+    component.props = { ...props };
 
-    if (component.props) {
-      component.props.children = children;
+    component.props.children = children;
 
-      if (typeof props['ref'] === 'function') {
-        props['ref'](component);
-      }
+    if (typeof component.props['ref'] === 'function') {
+      component.props['ref'](component);
     }
 
-    return component;
+    if (!entry) {
+      entry = component;
+    }
+
+    return component._render();
   }
 
   const element = document.createElement(name);
 
   for (const child of children) {
-    if (typeof child === 'string') {
-      const text = document.createTextNode(child);
+    if (typeof child === 'string' || typeof child === 'number') {
+      const text = document.createTextNode(child.toString());
       element.appendChild(text);
     } else if (child instanceof HTMLElement) {
       element.appendChild(child);
@@ -89,12 +103,17 @@ export let createElement = (
       element.appendChild(child._render());
     } else if (child instanceof Array) {
       for (const c of child) {
-        element.appendChild(c);
+        if (typeof c === 'string' || typeof c === 'number') {
+          element.textContent = c.toString();
+        } else {
+          element.appendChild(c);
+        }
       }
     }
   }
 
   if (props) {
+    element._key = props.key;
     for (const key in props) {
       if (key === 'className') {
         element.setAttribute('class', props[key]);
@@ -102,6 +121,8 @@ export let createElement = (
         props[key](element);
       } else if (key.startsWith('on')) {
         (element as any)[key.toLowerCase()] = props[key];
+      } else if (key === 'style' && typeof props[key] === 'object') {
+        element.setAttribute(key, jsToCss(props[key]));
       } else {
         element.setAttribute(key, props[key]);
       }
@@ -111,51 +132,54 @@ export let createElement = (
   return element;
 };
 
+export let createElement = _createElement.bind({});
+
 export const render = (type: any, dest: HTMLElement) => {
-  dest.appendChild(type._render());
+  dest.appendChild(type);
 };
 
 export class Component {
-  public root: HTMLElement;
-  public state: any;
+  public root: any;
+  public state: any = {};
+  public props: any = {};
 
   public setState(newState: any) {
-    this.state = { ...newState };
-
-    const c = createElement.bind({});
-
-    createElement = (name: string, props: any, ...children: any[]) => {
-      return updateElement(name, props, ...children);
-    };
-
-    const newTree = this.render();
-
-    this.updateAttributes(newTree, this.root);
-
-    createElement = c;
+    this.state = { ...this.state, ...newState };
+    this.forceUpdate();
   }
 
-  public updateAttributes(obj: any, dom: HTMLElement) {
-    for (const attr in obj.attributes) {
-      dom.setAttribute(attr, obj.attributes[attr]);
-    }
+  public forceUpdate() {
+    createElement = updateElement;
+    const newTree = this.render(this.props, this.state);
+    createElement = _createElement;
 
-    for (let i = 0; i < obj.children.length; i++) {
-      if (dom.childNodes[i] && obj.children[i]) {
-        this.updateAttributes(obj.children[i], dom.children[i] as HTMLElement);
+    this.updateAttributes(newTree, this.root);
+  }
+
+  public updateAttributes(obj: any, dom: any) {
+    if (typeof obj === 'object') {
+      for (const attr in obj.attributes) {
+        dom.setAttribute(attr, obj.attributes[attr]);
       }
+
+      for (let i = 0; i < obj.children.length; i++) {
+        if (dom.childNodes[i] && obj.children[i]) {
+          this.updateAttributes(obj.children[i], dom.childNodes[i]);
+        }
+      }
+    } else if (typeof obj === 'string' && dom.textContent !== obj) {
+      dom.textContent = obj;
     }
   }
 
   public _render() {
-    this.root = this.render();
-
+    this.root = this.render(this.props, this.state);
     this.onRender();
 
     return this.root;
   }
 
-  public render(): HTMLElement {
+  public render(props?: any, state?: any): any {
     return null;
   }
 
