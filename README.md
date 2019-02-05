@@ -5,6 +5,11 @@
 React is a great framework for building complex UI with a bunch of components, but it has also some cons. 
 The main weakness of React is the bundle size, and that's why Rivi was created. Rivi is a really small library with all the basic features of React, like `setState`. It also has built-in similar API to styled-components, but much lighter and based on the inline styles. If you want a global store for your app, there is no need to worry since this library has @reactive decorators like the @observable decorator in MobX.
 
+# Installation
+```bash
+$ npm install rivi
+```
+
 # Features
 - A basic and fast `setState`, but without mapping arrays in `render`.
 - Props and state are passed to the `render` function, so you can destructure them cleanly:
@@ -48,11 +53,6 @@ It doesn't differ from React that much, except these changes:
     );
   }
   ```
-
-# Installation
-```bash
-$ npm install rivi
-```
 
 # Quick example
 Here's the code of an example component:
